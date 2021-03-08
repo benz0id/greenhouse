@@ -6,14 +6,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 from typing import List, Dict, Any
 
 # Your JSON filename goes here
-json = ''
+# See gspread on github
+JSON = 'my_API_creds.json'
 
-scope = ['https://spreadsheets.google.com/feeds',
+SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    json,
-    scope)
-client = gspread.authorize(credentials)
+CREDS = ServiceAccountCredentials.from_json_keyfile_name(
+    JSON,
+    SCOPE)
+CLIENT = gspread.authorize(CREDS)
 
 
 def soft_to_hard_date(date: str) -> time:
@@ -54,7 +55,7 @@ class SamplingSchedule:
         """Loads a backed up schedule to <weekly_schedule>, returns true iff
         successful"""
         try:
-            schedule_sheet = client.open("Watering Schedule").sheet1
+            schedule_sheet = CLIENT.open("Watering Schedule").sheet1
             read = schedule_sheet.cell(15, 17).value
             self.__init__()
 
@@ -74,13 +75,14 @@ class SamplingSchedule:
 
             else:
                 return self.update_from_sheets()
-        except Exception:
+        except gspread.exceptions.GSpreadException:
+            print("Failed to access sheets. Check your internet connection.")
             return False
 
     def update_from_sheets(self) -> bool:
         """Updates from a list of times provided on the spreadsheet."""
         try:
-            schedule_sheet = client.open("Watering Schedule").sheet1
+            schedule_sheet = CLIENT.open("Watering Schedule").sheet1
 
             for i in range(19, 27):
                 column_data = schedule_sheet.col_values(i)
@@ -89,7 +91,8 @@ class SamplingSchedule:
                 for dte in column_data:
                     self.weekly_schedule[day].append(soft_to_hard_date(dte))
             return True
-        except Exception:
+        except gspread.exceptions.GSpreadException:
+            print("Failed to access sheets. Check your internet connection.")
             return False
 
     def get_times(self) -> List[time]:
@@ -135,7 +138,7 @@ class Measurement:
     def record_data_point(self, arduino: serial.Serial) -> bool:
         """Records a data point to a given spreadsheet"""
 
-        spreadsheet = client.open(self.spreadsheet_name).sheet1
+        spreadsheet = CLIENT.open(self.spreadsheet_name).sheet1
 
         data = self.get_data(arduino)
         curdate = datetime.today().isoformat()

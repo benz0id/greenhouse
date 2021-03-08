@@ -8,16 +8,19 @@ from datetime import datetime, time
 from oauth2client.service_account import ServiceAccountCredentials
 from typing import List, Tuple, Dict
 
+# Programmed before I knew what I was doing.
+# Forgive egregious design decisions & general bad code lol.
 
 print("Initiating setup")
 
 print("Accessing google API")
-scope = ['https://spreadsheets.google.com/feeds',
+JSON = 'my_API_creds.json'
+SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    'Green House-3b2a08455850.json',
-    scope)
-client = gspread.authorize(creds)
+CREDS = ServiceAccountCredentials.from_json_keyfile_name(
+    JSON,
+    SCOPE)
+CLIENT = gspread.authorize(CREDS)
 
 print("Establishing arduino connection")
 
@@ -84,16 +87,14 @@ daily_water = []
 daily_data = []
 
 
-a = weekly_watering.update()
-b = weekly_data.update()
-if not a or not b:
+if not weekly_watering.update() or not weekly_data.update():
     working = False
 day = datetime.today().weekday()
 daily_water = weekly_watering.weekly_schedule[day]
 daily_data = weekly_data.weekly_schedule[day]
 
 
-def error() -> None:
+def report_error() -> None:
     """Activates the arduino's error light."""
     arduino.write("ERROR".encode())
 
@@ -141,7 +142,7 @@ while True:
         if "update" in data:
             print("Attempting update")
             if not weekly_watering.update() or not weekly_data.update():
-                error()
+                report_error()
                 print("Update failed")
             else:
                 print('Update successful')
@@ -164,7 +165,7 @@ while True:
             print("New day successful")
         else:
             print("New day failed")
-            error()
+            report_error()
         day = datetime.today().weekday()
         daily_water = weekly_watering.weekly_schedule[day]
         daily_data = weekly_data.weekly_schedule[day]
@@ -179,7 +180,7 @@ while True:
             print("Measurements successful")
         else:
             print("Measurements failed.")
-            error()
+            report_error()
         daily_data.pop(0)
     if is_daily_water and daily_water[0][0] < current_time:
         print("Watering for", daily_water[0][1], "seconds.")
@@ -188,7 +189,7 @@ while True:
             print("Watering successful")
         else:
             print("Watering Failed")
-            error()
+            report_error()
         daily_water.pop(0)
 
         sleep(1)
